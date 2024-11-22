@@ -112,7 +112,7 @@ module fifo #(
             last <= 1'b0;
         end
         else begin
-            if ((full && rd_en) || (counter == (FIFO_DEPTH - 2) && wr_en && !rd_data)) begin
+            if ((full && rd_en) || (counter == (FIFO_DEPTH - 2) && wr_en && !rd_en)) begin
                 last <= 1'b1;
             end
             else if(last && (!rd_en ^ !wr_en)) begin

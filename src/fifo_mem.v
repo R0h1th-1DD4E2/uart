@@ -22,7 +22,7 @@ module fifo_mem #(
 );
     reg [(DATA_WIDTH - 1) : 0] MEM [0 : (FIFO_DEPTH-1)]; // array of 16 register
     
-    assign data_out = data_out[rd_addr];
+    assign data_out = MEM[rd_addr];
     
     always @(posedge clk) begin
         if (wr_en) begin
