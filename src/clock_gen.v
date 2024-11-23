@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 module clock_gen(
-    input clk,              // 100 MHz input clock
+    input clk,              // 50 MHz input clock
     input [1:0] select,     // Select line to choose baud rate
     output reg baud_clk     // Output clock based on selected baud rate
 );
@@ -16,10 +16,10 @@ module clock_gen(
     reg clk38400 = 1'b0;
     reg clk57600 = 1'b0;
 
-    parameter div9600  = 10417;  // 9600 baud clock divider
-    parameter div19200 = 5208;   // 19200 baud clock divider
-    parameter div38400 = 2604;   // 38400 baud clock divider
-    parameter div57600 = 1736;   // 57600 baud clock divider
+    parameter div9600  = 5208;  // 9600 baud clock divider
+    parameter div19200 = 2604;   // 19200 baud clock divider
+    parameter div38400 = 1302;   // 38400 baud clock divider
+    parameter div57600 = 868;   // 57600 baud clock divider
 
 always @(posedge clk)
     begin
