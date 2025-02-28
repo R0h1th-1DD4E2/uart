@@ -18,83 +18,78 @@ module receiver(
                 DATA_BITS = 2'b11,
                 STOP = 2'b10;
     
-    reg [1:0] state, next_state; // state register
+    reg [1:0] state; // state register
     reg [3:0] bit_index;    // index of bit to store
     reg [7:0] recieved_data;    // data stored in register before output 
     reg [8:0] count;    // counter for CPB
     
-    // Reset logic 
-    always @(posedge clk) begin
-        if (rst) begin 
-            state <= IDLE;
-        end
-        else 
-            state <= next_state;
-    end
-    
-    // Next state logic
-    always @(posedge clk) begin
-        case (state)
-            IDLE : next_state <= (rx == 0) ? START : IDLE;
-            START : begin
-                if (count == (CPB)/2) begin
-                    next_state <= (rx == 0) ? START : IDLE;
-                end
-                else begin
-                    next_state <= (count >= (CPB - 1)) ? DATA_BITS : START;
-                end
-            end
-            DATA_BITS : next_state <= (bit_index < 8) ? DATA_BITS : STOP;
-            STOP : next_state <= (count >= (CPB - 1)) ? IDLE : STOP;
-            default : next_state <= IDLE;
-        endcase
-    end
-    
-    // State logic
-    always @(*) begin
-        case (state)
-            IDLE: begin
-                bit_index <= 0;
-                recieved_data <= 0;
-                valid <= 0;
-            end
-            START:begin
-                
-            end
-            DATA_BITS: begin
-                if (count == (CPB / 2)) begin
-                    recieved_data[bit_index] <= rx;
-                    // $display("Recieved 0x%h with current index %d and received data 0x%h", recieved_data[bit_index], bit_index, recieved_data);
-                end
-            end
-            STOP:begin
-                valid <= 1'b1;
-                data <=  recieved_data;
-                bit_index <= 0;
-                // $display("Recieved 0x%h", recieved_data);
-                // $display("Data 0x%h", data);
-            end
-        endcase
-        // $display("State %d and count %d", state, count);
-    end
-
-    // Counter logic
-    always @(posedge clk) begin
+    // Comblete logic
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
+            state <= IDLE;
             count <= 0;
+            bit_index <= 0;
+            valid <= 0;
+            recieved_data <= 0;
         end
         else begin
-            if (state == IDLE) begin
-                count <= 0;
-            end
+            valid <= 0; // Pulse valid for one clock only
             
-            else if (state == DATA_BITS) begin
-                count <= (count >= CPB) ? 0 : count + 1'b1;
-                bit_index <= (count >= CPB) ? bit_index + 1: bit_index;
-            end
-            else begin
-                count <= (count >= CPB) ? 0 : count + 1'b1;
-            end
+            case (state)
+                IDLE: begin
+                    bit_index <= 0;
+                    count <= 0;
+                    if (rx == 0) begin
+                        state <= START;
+                        count <= 1'b1;
+                    end
+                end
+                
+                START: begin
+                    count <= count + 1'b1;
+                    
+                    if (count == (CPB/2)) begin // Check if start bit is still valid at middle sample
+                        if (rx == 1) state <= IDLE;
+                    end
+                    else if (count >= CPB - 1) begin
+                        state <= DATA_BITS;
+                        count <= 0;
+                    end
+                end
+                
+                DATA_BITS: begin
+                    count <= count + 1;
+                    
+                    if (count == (CPB/2))
+                        recieved_data[bit_index] <= rx; // Sample at middle
+                    
+                    if (count >= CPB - 1) begin
+                        count <= 0;
+                        if (bit_index < 7)
+                            bit_index <= bit_index + 1;
+                        else begin
+                            state <= STOP;
+                            bit_index <= 0;
+                        end
+                    end
+                end
+                
+                STOP: begin
+                    count <= count + 1;
+                    
+                    if (count == (CPB/2)) begin
+                        if (rx == 1) begin // Valid stop bit
+                            data <= recieved_data;
+                            valid <= 1;
+                        end
+                    end
+                    
+                    if (count >= CPB - 1) begin
+                        state <= IDLE;
+                        count <= 0;
+                    end
+                end
+            endcase
         end
     end
 endmodule
